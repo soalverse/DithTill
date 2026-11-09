@@ -1,0 +1,50 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "DithTill",
+  "version": "0.1.0",
+  "identifier": "com.soalverse.dithtill",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "node scripts/check-bundled-assets.mjs && npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "DithTill",
+        "width": 980,
+        "height": 940,
+        "minWidth": 760,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; frame-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "resources": {
+      "../LICENSE": "LICENSE",
+      "../NOTICE": "NOTICE",
+      "../THIRD-PARTY-NOTICES.md": "THIRD-PARTY-NOTICES.md"
+    },
+    "macOS": {
+      "signingIdentity": "-"
+    },
+    "copyright": "Copyright 2026 Soalverse. Apache-2.0. Ducks are allowed.",
+    "shortDescription": "Turn your photos, videos, drawings and songs into 1-bit dithered and halftone art that moves to the music, free and open source, so go build something strange.",
+    "longDescription": "DithTill is one canvas where photos, videos, drawings, dot-matrix text, 14 music visualizers and a song all stack up as layers, and every layer gets its own look, square dither bits in patterns from Bayer to blue noise to Floyd-Steinberg, or halftone dots on an angled screen, with inks that overprint like real screen printing. You can cut the background out of a photo on your own machine, mirror and kaleidoscope and smear anything, make any slider move on the beat or with the bass, and press Rec to draw live while the song plays, and the recording stays its own layer, so you can move it, loop it, merge it, or make it un-draw itself backwards. When you are done, it exports a PNG, a vector SVG, an MP4 with sound or a GIF, and it all runs offline, nothing gets uploaded. It is good for musicians who need a video for the song, zine makers and poster printers, VJs with a loop to make, game developers after a 1-bit cutscene, and anyone who has ever looked at a photograph and thought it had too many colours. DithTill is open source under Apache-2.0, so take it apart, change it, and go build!",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

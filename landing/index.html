@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en-CA">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DithTill</title>
+    <meta
+      name="description"
+      content="Turn your photos, videos, drawings and songs into 1-bit dithered and halftone art that moves to the music, free and open source, so go build something strange."
+    />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="stylesheet" href="/landing.css" />
+  </head>
+  <body>
+    <div class="scr" id="scr" tabindex="-1">
+      <canvas class="scr-field" id="field" aria-hidden="true"></canvas>
+      <aside class="scr-rail scr-rail--l" aria-hidden="true">
+        <div class="ghost">
+          <div class="scr-brand">
+            <span class="scr-wordmark">Dith<b>till</b></span>
+          </div>
+          <div class="scr-modes">
+            <span class="scr-mode is-on">Canvas</span><span class="scr-mode">Library</span>
+          </div>
+          <div class="deck-group">
+            <span class="deck-panel-label">Tool</span>
+            <div class="deck-seg">
+              <span class="is-on">Draw</span><span>Erase</span><span>Move</span>
+            </div>
+            <div class="deck-slider">
+              <span class="deck-ctl-label">Size</span>
+              <div class="deck-slider-track">
+                <div class="deck-slider-thumb" style="left: 12%"></div>
+              </div>
+              <span class="deck-slider-readout">3</span>
+            </div>
+            <div class="deck-slider">
+              <span class="deck-ctl-label">Shade</span>
+              <div class="deck-slider-track">
+                <div class="deck-slider-thumb" style="left: 85%"></div>
+              </div>
+              <span class="deck-slider-readout">85%</span>
+            </div>
+          </div>
+          <div class="deck-hsep"></div>
+          <div class="deck-group">
+            <span class="deck-panel-label">Look · new layers</span>
+            <div class="deck-dd">
+              <span class="deck-ctl-label">Palette</span
+              ><span class="deck-dd-btn">Mono<span class="deck-dd-caret">▾</span></span>
+            </div>
+            <div class="deck-dd">
+              <span class="deck-ctl-label">Style</span
+              ><span class="deck-dd-btn">Dither<span class="deck-dd-caret">▾</span></span>
+            </div>
+            <div class="deck-dd">
+              <span class="deck-ctl-label">Pattern</span
+              ><span class="deck-dd-btn">8x8<span class="deck-dd-caret">▾</span></span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <aside class="scr-rail scr-rail--r" aria-label="Screen controls">
+        <div class="ghost" aria-hidden="true">
+          <div class="deck-group">
+            <div class="scr-layers-head">
+              <span class="crt-layers-title">Layers</span><span class="crt-layers-add">+</span>
+            </div>
+            <div class="crt-layer-row is-sel">
+              <span class="crt-layer-name">Whole canvas</span>
+            </div>
+          </div>
+          <div class="anim-head">
+            <span class="deck-panel-label">Animate</span><span class="deck-load">Timeline ▴</span>
+          </div>
+          <span class="deck-load deck-export">Project ▾</span>
+        </div>
+        <div class="scr-sys">
+          <div class="scr-sys-row">
+            <span class="scr-chip scr-chip--ghost" aria-hidden="true">⚙</span>
+            <button
+              type="button"
+              class="scr-chip"
+              id="help"
+              aria-pressed="false"
+              aria-label="Help"
+              title="Help"
+            >
+              ?
+            </button>
+            <button
+              type="button"
+              class="scr-power"
+              aria-pressed="false"
+              id="power"
+              aria-label="Power"
+              title="Power"
+            >
+              <span class="scr-power-glyph" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <footer class="scr-strip" aria-hidden="true">
+        <div class="ghost">
+          <div class="tl-grid">
+            <div class="tl-bar">
+              <span class="tl-time"><span class="tl-now">0:00.0</span> / 0:24.0</span>
+            </div>
+            <div class="tl-ruler">
+              <span class="tl-tick" style="left: 0%">1</span>
+              <span class="tl-tick" style="left: 12.5%">2</span>
+              <span class="tl-tick" style="left: 25%">3</span>
+              <span class="tl-tick" style="left: 37.5%">4</span>
+              <span class="tl-tick" style="left: 50%">5</span>
+              <span class="tl-tick" style="left: 62.5%">6</span>
+              <span class="tl-tick" style="left: 75%">7</span>
+              <span class="tl-tick" style="left: 87.5%">8</span>
+              <div class="tl-grip"></div>
+            </div>
+          </div>
+        </div>
+      </footer>
+      <div class="scr-fx" aria-hidden="true">
+        <div class="scr-scan"></div>
+        <div class="scr-vig"></div>
+      </div>
+      <div class="scr-off" aria-hidden="true"></div>
+      <div class="scr-staticline" id="static" aria-hidden="true"></div>
+
+      <div class="crt-help" id="card-desktop" role="dialog" aria-label="DithTill" hidden>
+        <div class="crt-help-card">
+          <div class="crt-help-head">
+            <span class="crt-help-title">DithTill</span>
+            <span class="crt-help-close"
+              >Draw on the screen behind this card, it does not mind</span
+            >
+          </div>
+          <div class="crt-help-cols">
+            <div class="crt-help-list">
+              <a class="crt-help-item" id="online" href="/app/"
+                ><span class="crt-help-mark"></span>Use online</a
+              >
+              <button type="button" class="crt-help-item" id="download" aria-expanded="false">
+                <span class="crt-help-mark"></span>Download desktop app
+              </button>
+            </div>
+            <div class="crt-help-stack" id="about">
+              <div class="crt-help-body" data-body="what">
+                <span class="crt-help-topic">1-bit art on one layered canvas</span>
+                <span class="crt-help-line"
+                  >Dither or halftone your photos and videos, draw, record, and let a song move the
+                  dots</span
+                >
+                <span class="crt-help-line">Free and open source, Apache-2.0</span>
+                <span class="crt-help-line">Your work stays on your own computer</span>
+              </div>
+              <div class="crt-help-body is-off" data-body="online">
+                <span class="crt-help-topic">Use online</span>
+                <span class="crt-help-line"
+                  >Nothing to install, it runs right here in the browser</span
+                >
+                <span class="crt-help-line"
+                  >Nothing is uploaded, your work stays in this browser</span
+                >
+                <span class="crt-help-line"
+                  >Clearing site data clears your projects too, so back up the ones you love</span
+                >
+              </div>
+              <div class="crt-help-body is-off" data-body="download">
+                <span class="crt-help-topic">Download desktop app</span>
+                <span class="crt-help-line">Windows, macOS and Linux</span>
+                <span class="crt-help-line">Works offline and exports video much faster</span>
+                <span class="crt-help-line">Your work stays on your own computer</span>
+              </div>
+            </div>
+            <div class="crt-help-stack" id="installers" hidden>
+              <div class="crt-help-body is-print">
+                <div class="dl-rows" id="rows"></div>
+                <span class="crt-help-line dl-note"
+                  >Not signed yet, so your computer will warn you that it does not know who made
+                  this, which is fair, it has not met us</span
+                >
+                <span class="crt-help-line" id="how"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="crt-help" id="card-phone" role="dialog" aria-label="DithTill" hidden>
+        <div class="crt-help-card">
+          <div class="crt-help-head">
+            <span class="crt-help-title">DithTill</span>
+          </div>
+          <div class="crt-help-body is-print" id="phone-home">
+            <span class="crt-help-topic">Come back on a computer</span>
+            <span class="crt-help-line"
+              >DithTill was never built for phones. The buttons are small and your thumb is
+              not.</span
+            >
+            <span class="crt-help-line">It is free, and it will wait.</span>
+            <div class="crt-help-list">
+              <button type="button" class="crt-help-item is-on" id="send">
+                <span class="crt-help-mark">▸</span
+                ><span id="send-label">Send this page to my computer</span>
+              </button>
+              <button type="button" class="crt-help-item" id="phone-download">
+                <span class="crt-help-mark"></span>Download desktop app
+              </button>
+            </div>
+            <a class="phone-more" id="phone-online" href="/app/">Use online anyway, awkwardly ▸</a>
+          </div>
+          <div class="crt-help-body is-print" id="phone-installers" hidden>
+            <span class="crt-help-topic">For your computer, not this phone</span>
+            <div class="dl-rows" id="phone-rows"></div>
+            <span class="crt-help-line dl-note"
+              >Not signed yet, so your computer will warn you that it does not know who made this,
+              which is fair, it has not met us</span
+            >
+            <button type="button" class="phone-back" id="back">◂ Back</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="crt-banner" id="banner" role="status" hidden></div>
+    </div>
+    <script src="/landing-screen.js"></script>
+    <script src="/landing.js"></script>
+  </body>
+</html>

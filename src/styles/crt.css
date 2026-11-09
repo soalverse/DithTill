@@ -1,0 +1,1510 @@
+/* =============================================================================
+   DithTill — "The Radio" CRT device shell (Stage 5).
+   A warm retro device: a top Control Deck (where Stage 6's knobs mount), a brand
+   row with a power button, and a speaker - screen - speaker stage. The center is a
+   recessed CRT with a real gap and a glossy curved glass; scanlines / bloom /
+   vignette live on the GLASS ONLY and are gated by the FX switch (clean mode keeps
+   the curve + sheen, drops the effects). Mood swatches re-theme the DEVICE chrome
+   only — the screen always shows the real dithered preview (B&W by default).
+   Ported faithfully from the locked "DithTill Radio" design.
+   ============================================================================= */
+
+/* ===== Self-hosted webfonts (G-14) =====
+   Offline-first: the three UI fonts are vendored under public/fonts/ (OFL-1.1,
+   see public/fonts/OFL.txt) instead of the Google CDN, so the desktop app needs
+   no network and no CDN is allowed by the CSP. These are the Google Fonts "latin"
+   subset woff2 files, and reproduce EXACTLY the weight faces the old CDN link
+   served (Archivo 500-900 as a variable face; DM Mono 400/500; VT323 400) so the
+   font-matching outcome - and thus the rendered glyphs - is unchanged. */
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 500 900; /* variable wght axis - was CDN wght@500;600;700;800;900 */
+  font-display: swap;
+  src: url('/fonts/archivo-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'DM Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/dmmono-400-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'DM Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/dmmono-500-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'VT323';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/vt323-latin.woff2') format('woff2');
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+/* ===== ROOM (page backdrop) =====
+   The device AUTO-FITS the window (CrtShell scales it to the viewport), so the
+   room is a fixed, non-scrolling stage: 100vh, clipped, minimal padding. */
+
+/* ===== DEVICE (holds the mood theme vars; default = Forest) ===== */
+
+/* ===== CONTROL DECK (top) — Stage 6 mounts knobs here; for now it holds the
+   plain placeholder controls passed in as `deck`. ===== */
+/* Recessed surface — hosts the live (plain) controls until Stage 6 swaps in knobs. */
+/* While a cutout edit session is live the Burn deck gains the Cleanup row; reserve
+   its height across ALL modes so mode-switching still never resizes the device. */
+
+/* ===== BRAND ROW ===== */
+
+/* ===== GRILLE · SCREEN · GRILLE =====
+   The old 116px round speaker DOORS became two SLIM chrome speaker grilles
+   (modeled on a 50s chrome-louver radio) that WRAP the body edges — and they are
+   still doors: each swings open to a secret compartment (left = menu placeholder,
+   right = mood dots + FX). Chrome is deliberately mood-independent trim. */
+/* ONE FLARED CABINET (owner sketch, 2026-07-02): the lower section of the body
+   is genuinely WIDER — a boombox tier that sweeps out under the brand row, runs
+   past the body sides with a lip beyond the speakers, and wraps under them. The
+   speakers live INSIDE this section; nothing is a panel laid on top. */
+/* The tier's drop shadow, cast from the OLD (visible) tier box — a separate
+   unmasked layer behind everything so the mask above can't clip it. */
+/* The wrap paints nothing itself — the flared cabinet tier (.crt-stage::before)
+   is the material the speakers recess into (its mask carves the concave
+   shoulder sweeps — round 6 folded the old fillet patches into the tier so the
+   whole flare is one seamless paint); only the MESH swings as the door. */
+/* Bleed OFF the device sides like the reference radio's grilles wrap the corner. */
+/* The compartment behind the grille (revealed when the door swings open). */
+/* The speaker DOOR (re-skinned 2026-07-02, owner: integrate, don't overlay):
+   a bezel in the BODY'S OWN material (mood-aware vars) around a recessed
+   perforated mesh — a boombox speaker tower carved into the device, not a
+   chrome panel laid over it. Still a door: it swings on its outer edge. */
+/* Mid-swing / open the mesh reads as a thin panel (edge + throw shadow). */
+/* The mesh throat: perforated holes over a deep recess tinted toward the body
+   colour (every mood re-skins the speaker too), with woofer + tweeter rings. */
+/* Woofer (bottom) + tweeter (top) rings pressed into the mesh. */
+/* ===== LAYERS door (Record) — the scene stack ===== */
+.crt-layers {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 8px 8px 10px;
+}
+.crt-layers-close {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--sage);
+  opacity: 0.7;
+}
+.crt-layers-close:hover {
+  opacity: 1;
+}
+.crt-layers-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 7px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--sage);
+  opacity: 0.7;
+  text-align: center;
+  margin-top: 2px;
+}
+.crt-layers-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.crt-layers-empty {
+  font-family: 'DM Mono', monospace;
+  font-size: 6px;
+  letter-spacing: 0.2em;
+  color: var(--deck-label);
+  text-align: center;
+  margin-top: 8px;
+}
+.crt-layer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  transition:
+    box-shadow 0.12s,
+    background 0.12s;
+}
+.crt-layer-row:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+.crt-layer-row.is-sel {
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 8px var(--led-glow);
+}
+.crt-layer-row:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.crt-layer-n {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--ink);
+  opacity: 0.85;
+}
+.crt-layer-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 7px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: var(--sage);
+  background: rgba(0, 0, 0, 0.4);
+}
+.crt-layer-tag--video {
+  color: var(--accent);
+}
+.crt-layer-tag--drawing {
+  color: var(--jungle);
+}
+.crt-layer-tag--trk {
+  color: var(--accent);
+}
+/* P6: a layer row + its audio-mute speaker side by side. The speaker sits
+   OUTSIDE the row button so it stays clickable while the loop runs (live
+   muting is a performance move; arranging stays locked). */
+.crt-layer-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+}
+.crt-layer-wrap .crt-layer-row {
+  flex: 1;
+  min-width: 0;
+}
+/* The imported track when Loop Sound is off — present + removable, but dimmed to
+   show it isn't currently in the mix. */
+.crt-layer-row--audio.is-off {
+  opacity: 0.5;
+}
+.crt-layer-spk {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 9px;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+.crt-layer-spk:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.crt-layer-spk.is-muted {
+  opacity: 0.45;
+}
+.crt-layer-btn {
+  padding: 3px 0;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.crt-layer-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+.crt-layer-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.crt-layer-btn.is-arm {
+  color: var(--accent-ink);
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--led-glow);
+}
+/* Clear all layers — the red full-width confirm at the door's
+   foot. Red at rest (destructive); the ▲▼/+✕ cluster above is pushed up by this row.
+   Armed = solid fill + glow (the confirming second click). */
+/* ===== SCREEN (recessed CRT) ===== */
+.crt-glass {
+  position: relative;
+  container-type: size;
+  height: var(--screen-h);
+  width: auto;
+  border-radius: 9px;
+  overflow: hidden;
+  background: #08070a;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.55),
+    inset 0 2px 9px rgba(0, 0, 0, 0.5);
+}
+
+/* The live preview slot (real dither canvas) — bottom layer, letterboxed + crisp. */
+.crt-screen-slot {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.crt-screen-slot > div {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.crt-screen-slot canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* Glass sheen (always on — part of the curved-glass look, not an "effect"). */
+
+/* FX layer (scanlines / bloom / vignette) — gated by power + FX switch. */
+
+/* Screen-off blanket (covers the preview when powered down). */
+/* Power on/off flash line. */
+
+/* ===== HINT ===== */
+/* ===== DECK CONTROLS — the "fader board" design pass (owner-locked, 2026-07-01).
+   Every deck shares one three-panel skeleton inside the reserved surface:
+     [ params panel | switches | vertical ACTION rail ]   (+ Record's LOOP column)
+   Sliders replace the fiddly knobs for continuous params; Palette/Matrix are
+   segmented switches showing every option at once. Pure UI — same store wiring,
+   zero pipeline change. ===== */
+.deck-cols {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  align-items: stretch;
+}
+.deck-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+}
+.deck-panel-grow {
+  flex: 1;
+}
+/* Record's columns carry the most rows (loop transport + params + the Halftone
+   Size/Density/Tonal controls + Motion). A slightly tighter inter-row gap keeps the
+   tallest column within the shared deck reserve, so toggling Dither <-> Halftone — and
+   switching modes — never resizes the device. */
+.deck-cols .deck-panel {
+  gap: 5px;
+}
+.deck-panel-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 7.5px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--deck-label);
+}
+/* Engraved separators between panels / groups. */
+.deck-vsep {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(0, 0, 0, 0.38);
+  box-shadow: 1px 0 0 var(--rim);
+  border-radius: 1px;
+}
+.deck-hsep {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.38);
+  box-shadow: 0 1px 0 var(--rim);
+  margin: 3px 0;
+}
+
+/* Fader row: label | groove | readout. The input is a native range (arrow keys
+   step it) skinned as a recessed groove with an LED-notched cap. */
+.deck-slider {
+  display: grid;
+  grid-template-columns: 60px 1fr 52px;
+  align-items: center;
+  gap: 10px;
+}
+.deck-ctl-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 7.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sage);
+}
+.deck-slider-readout {
+  font-family: 'DM Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: right;
+  white-space: nowrap;
+}
+.deck-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  cursor: ew-resize;
+}
+.deck-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.65),
+    0 1px 0 var(--rim);
+}
+.deck-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 24px;
+  margin-top: -9px;
+  border-radius: 4px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0) 44%,
+      var(--accent) 44%,
+      var(--accent) 56%,
+      rgba(0, 0, 0, 0) 56%
+    ),
+    linear-gradient(180deg, #4c4c4c, #1c1c1c);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.18),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.deck-range:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Segmented option switch (Palette / Matrix / mode toggles) — every option visible. */
+.deck-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.34);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* Compact deck dropdown (owner ask) — many-option menus collapse to one row and
+   several can share a row; the popover is position:fixed so the deck clip can't
+   crop it. */
+.deck-dd-row {
+  display: flex;
+  gap: 8px;
+}
+.deck-dd-row .deck-dd {
+  flex: 1;
+  min-width: 0;
+}
+.deck-dd {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.deck-dd-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.34);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+.deck-dd-btn.is-open,
+.deck-dd-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.deck-dd-val {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.deck-dd-caret {
+  flex-shrink: 0;
+  font-size: 8px;
+  opacity: 0.6;
+}
+.deck-dd-pop {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #16160f;
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  max-height: min(400px, 70vh);
+  overflow-y: auto;
+}
+/* A labelled divider inside a dropdown (the Pattern menu's "diffusion" group). */
+.deck-dd-divider {
+  margin: 4px 6px 0;
+  padding: 4px 5px 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sub, #8a9180);
+}
+.deck-dd-opt {
+  padding: 6px 11px;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  /* Fallback matches the default theme — the popover is body-portaled, so before the
+     trigger's computed vars are copied in (Dropdown.tsx) var(--ink) would be empty. */
+  color: var(--ink, #d9e1cf);
+  background: transparent;
+}
+.deck-dd-opt:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.deck-dd-opt.is-on {
+  color: var(--accent-ink, #241b10);
+  background: var(--accent, #f2a93b);
+}
+.deck-seg button {
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.16));
+  box-shadow: inset 0 -1px 0 var(--rim);
+}
+.deck-seg button.is-on {
+  background: linear-gradient(180deg, var(--accent), var(--accent-deep));
+  color: var(--accent-ink);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Vertical action rail (right edge of every deck). */
+.deck-rail {
+  min-width: 122px;
+  flex-shrink: 0;
+}
+.deck-rail .deck-load {
+  width: 100%;
+  text-align: center;
+}
+.deck-rail-pair {
+  display: flex;
+  gap: 6px;
+}
+.deck-rail-pair .deck-load {
+  flex: 1;
+}
+
+/* Small tool buttons (z-order / flip / crop / motion nudge). */
+.deck-toolrow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Terracotta EXPORT buttons (was inline-styled) — rail-sizable. */
+.deck-load.deck-export {
+  background: #ae6455;
+  color: #fff;
+}
+.deck-load.deck-export.is-busy {
+  background: #5a5550;
+}
+
+/* G7 Export… menu: the popover is absolutely positioned and opens UPWARD, so it
+   never adds to the deck surface's scrollHeight (the shared deck
+   reserve must not move). */
+.export-menu {
+  position: relative;
+  width: 100%;
+}
+.export-menu-pop {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(52, 48, 44, 0.98), rgba(38, 35, 32, 0.98));
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.export-menu-pop .deck-load {
+  width: 100%;
+  text-align: center;
+}
+
+/* Canvas-background swatches: transparent + the current palette. */
+.bg-row {
+  align-items: center;
+}
+.bg-swatches {
+  display: flex;
+  gap: 5px;
+}
+.bg-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  padding: 0;
+}
+.bg-swatch.is-on {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+/* The "transparent" slot: a tiny checkerboard. */
+.bg-swatch-none {
+  background:
+    linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.25) 25%,
+      transparent 25%,
+      transparent 75%,
+      rgba(255, 255, 255, 0.25) 75%
+    ),
+    linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.25) 25%,
+      transparent 25%,
+      transparent 75%,
+      rgba(255, 255, 255, 0.25) 75%
+    ),
+    #3a3733;
+  background-size: 8px 8px;
+  background-position:
+    0 0,
+    4px 4px;
+}
+/* The custom "+" chip (custom-colour Phase 1): a dashed placeholder until a colour is
+   chosen, then a solid swatch of that colour (styled inline). */
+.bg-swatch-custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  color: var(--sage);
+  font-size: 12px;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.06);
+}
+.bg-swatch-custom.is-on {
+  border-style: solid;
+}
+/* Floating RGB popover: fixed to the chip's rect, lifted up by its own height so it
+   opens OVER the glass and adds ZERO deck height. */
+.bg-custom-pop {
+  position: fixed;
+  transform: translateY(-100%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(52, 48, 44, 0.98), rgba(38, 35, 32, 0.98));
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.bg-custom-input {
+  width: 34px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+}
+.bg-custom-hex {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--parchment, #e4e6e9);
+  min-width: 62px;
+}
+.bg-custom-done {
+  padding: 4px 10px;
+}
+
+.deck-switch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.deck-switch-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 7.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sage);
+}
+/* Row variant of .deck-switch for a vertical action rail (Burn video Sound, B1):
+   label left, rocker right, full width — a single compact row so the rail never
+   overtakes the taller params columns (the 378px deck reserve). */
+
+.rocker {
+  position: relative;
+  width: 42px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 11px;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+  transition: background 0.2s;
+}
+.rocker.is-on {
+  background: var(--accent);
+}
+.rocker-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ececec;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  transition: left 0.2s;
+}
+.rocker.is-on .rocker-knob {
+  left: 22px;
+}
+
+.aspect-switch {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.34);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+.aspect-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.16));
+  box-shadow: inset 0 -1px 0 var(--rim);
+}
+.aspect-btn.is-on {
+  background: linear-gradient(180deg, var(--accent), var(--accent-deep));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+/* Armed (destructive aspect change awaiting the confirming second click). */
+.aspect-btn.is-arm {
+  background: linear-gradient(180deg, #e5a23b, rgba(0, 0, 0, 0.3));
+}
+.aspect-ico {
+  display: block;
+  border: 1.5px solid var(--ink);
+  border-radius: 1px;
+  opacity: 0.82;
+}
+.aspect-btn.is-on .aspect-ico {
+  border-color: var(--accent-ink);
+  opacity: 1;
+}
+.aspect-ico--square {
+  width: 13px;
+  height: 13px;
+}
+.aspect-ico--landscape {
+  width: 16px;
+  height: 12px;
+}
+.aspect-ico--portrait {
+  width: 12px;
+  height: 16px;
+}
+
+/* Reframe surface (Stage 8): drag to pan, wheel to zoom, double-click to reset. */
+/* B9 brush-size cursor: a ring at the pointer sized to the actual dab footprint. */
+.brush-ring {
+  position: absolute;
+  display: none;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 0 0 1.5px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 4;
+}
+/* Loop cue (Record) — a live start/wrap marker over the glass, never in the
+   export. A thin playhead sweeps the top edge; the flash pulses on each downbeat.
+   pointer-events:none so it never intercepts drawing; display toggled by the loop
+   driver (shown only while Play/Rec runs). */
+.loop-cue {
+  position: absolute;
+  inset: 0;
+  display: none;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+}
+.loop-cue-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  transform-origin: left center;
+  transform: scaleX(0);
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--led-glow);
+}
+.loop-cue-flash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  opacity: 0;
+  background: linear-gradient(to bottom, var(--accent), transparent);
+  mix-blend-mode: screen;
+}
+/* Mode 02 Draw glass surface — fills the square glass; hosts the brush ring. */
+
+/* ===== HELP: a card over everything, the canvas dimmed behind.
+   Esc opens / closes it, a click outside closes it; topics left, the topic's lines right. */
+.crt-help {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.6);
+}
+.crt-help-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(680px, 100%);
+  max-height: calc(100vh - 32px);
+  padding: 18px 22px;
+  overflow: auto;
+  background: rgba(4, 8, 5, 0.96);
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  box-shadow: 0 0 24px rgba(var(--accent-rgb), 0.25);
+  font-family: 'VT323', 'DM Mono', monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.crt-help-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.crt-help-title {
+  font-size: 30px;
+  line-height: 1;
+  color: var(--accent);
+  text-shadow: 0 0 9px var(--led-glow);
+}
+.crt-help-close {
+  font-size: 16px;
+  opacity: 0.6;
+}
+.crt-help-cols {
+  display: flex;
+  gap: 18px;
+}
+.crt-help-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 170px;
+  padding-right: 12px;
+  border-right: 1px solid rgba(var(--accent-rgb), 0.25);
+}
+.crt-help-item {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 1px 0;
+  text-align: left;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--accent);
+  opacity: 0.65;
+}
+.crt-help-item:hover,
+.crt-help-item.is-on {
+  opacity: 1;
+  text-shadow: 0 0 9px var(--led-glow);
+}
+.crt-help-stack {
+  display: grid;
+  flex: 1;
+}
+.crt-help-body {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.crt-help-body.is-off {
+  visibility: hidden;
+}
+.crt-help-mark {
+  display: inline-block;
+  width: 1.1em;
+}
+.crt-help-topic {
+  font-size: 24px;
+  line-height: 1;
+  text-shadow: 0 0 9px var(--led-glow);
+}
+.crt-help-line {
+  font-size: 20px;
+  line-height: 1.15;
+  opacity: 0.9;
+}
+.crt-credits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 10px 0;
+  border-top: 1px solid rgba(var(--accent-rgb), 0.25);
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.25);
+}
+.crt-credits-row {
+  display: flex;
+  gap: 18px;
+}
+.crt-credits-row dd {
+  flex: 1;
+  margin: 0;
+}
+.crt-credits-name {
+  flex: 0 0 200px;
+  font-size: 20px;
+  line-height: 1.15;
+  text-shadow: 0 0 9px var(--led-glow);
+}
+@media (max-width: 560px) {
+  .crt-credits-row {
+    flex-direction: column;
+    gap: 1px;
+  }
+  .crt-credits-name {
+    flex-basis: auto;
+  }
+  .crt-help-cols {
+    flex-direction: column;
+  }
+  .crt-help-list {
+    flex-basis: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    padding: 0 0 8px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(var(--accent-rgb), 0.25);
+  }
+}
+
+/* ===== On-glass notifications (reusable; match the ? help aesthetic) ===== */
+/* Centered OK card — exports + errors; must be clicked. */
+.crt-notify {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  background: rgba(4, 8, 5, 0.9);
+  font-family: 'VT323', 'DM Mono', monospace;
+  color: var(--phos);
+  text-shadow: 0 0 6px rgba(var(--glow-rgb), 0.45);
+}
+.crt-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 92%;
+}
+.crt-notice-title {
+  font-size: clamp(20px, 7cqw, 30px);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 9px var(--led-glow);
+}
+.crt-notice-body {
+  font-size: clamp(13px, 4.6cqw, 21px);
+  line-height: 1.15;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  word-break: break-word;
+}
+.crt-notice-ok {
+  margin-top: 6px;
+  padding: 1px 20px;
+  border: 1px solid rgba(var(--phos-rgb), 0.5);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'VT323', monospace;
+  font-size: clamp(15px, 5cqw, 24px);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--phos);
+  text-shadow: 0 0 6px rgba(var(--glow-rgb), 0.45);
+  transition:
+    color 0.12s,
+    border-color 0.12s,
+    text-shadow 0.12s;
+}
+.crt-notice-ok:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  text-shadow: 0 0 9px var(--led-glow);
+}
+.crt-notice-ok:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+/* The two-press armed state (Export past 15min, K3) — the Clear-all idiom. */
+.crt-notice-ok.is-arm {
+  color: var(--accent);
+  border-color: var(--accent);
+  text-shadow: 0 0 9px var(--led-glow);
+}
+
+/* ===== Export-length picker — an on-glass crt-notify panel. ===== */
+.crt-exlen {
+  gap: 8px;
+}
+.crt-exlen-opts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.crt-exlen-opt {
+  padding: 1px 12px;
+  border: 1px solid rgba(var(--phos-rgb), 0.35);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'VT323', monospace;
+  font-size: clamp(14px, 4.4cqw, 21px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--phos);
+  text-shadow: 0 0 6px rgba(var(--glow-rgb), 0.45);
+  transition:
+    color 0.12s,
+    border-color 0.12s,
+    text-shadow 0.12s;
+}
+.crt-exlen-opt:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.crt-exlen-opt.is-on {
+  color: var(--accent);
+  border-color: var(--accent);
+  text-shadow: 0 0 9px var(--led-glow);
+}
+/* Disabled chip (the GIF format chip while the length passes the loop — D5). */
+.crt-exlen-opt:disabled,
+.crt-exlen-opt:disabled:hover {
+  cursor: default;
+  opacity: 0.32;
+  color: var(--phos);
+  border-color: rgba(var(--phos-rgb), 0.2);
+  text-shadow: none;
+}
+.crt-exlen-input {
+  width: 8ch;
+  padding: 1px 8px;
+  border: 1px solid rgba(var(--phos-rgb), 0.4);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.4);
+  text-align: center;
+  font-family: 'VT323', monospace;
+  font-size: clamp(15px, 5cqw, 24px);
+  letter-spacing: 0.1em;
+  color: var(--phos);
+}
+.crt-exlen-input.is-bad {
+  border-color: #e07a2f;
+  color: var(--accent);
+}
+.crt-exlen-info {
+  font-size: clamp(13px, 4cqw, 19px);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+.crt-exlen-note {
+  font-size: clamp(11px, 3.4cqw, 16px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  opacity: 0.85;
+}
+.crt-exlen-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 2px;
+}
+/* Transient / progress banner at the glass bottom. */
+.crt-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(4, 8, 5, 0.82);
+  font-family: 'VT323', 'DM Mono', monospace;
+  font-size: clamp(13px, 4.2cqw, 19px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--phos);
+  text-shadow: 0 0 6px rgba(var(--glow-rgb), 0.45);
+  animation:
+    crt-banner-in 0.2s ease,
+    crt-banner-out 0.4s ease 3.1s forwards;
+}
+/* Progress holds (no fade-out) until cleared. */
+.crt-banner--hold {
+  animation: crt-banner-in 0.2s ease;
+}
+.crt-banner-title {
+  color: var(--accent);
+}
+@keyframes crt-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes crt-banner-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* ===== Timer-crop bar: on-glass trim window over a Burn video ===== */
+
+/* ===== MODE placeholders (v1 Group A): coming-soon screen + deck ===== */
+.crt-coming {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  font-family: 'VT323', 'DM Mono', monospace;
+  color: var(--phos);
+  text-shadow: 0 0 6px rgba(var(--glow-rgb), 0.45);
+}
+.crt-coming-label {
+  font-size: clamp(22px, 8cqw, 42px);
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 9px var(--led-glow);
+}
+.crt-coming-soon {
+  font-size: clamp(12px, 3.6cqw, 18px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+/* Deck push-button (used everywhere: rails, tool rows, loop column). */
+.deck-load {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  font: 500 13px system-ui;
+  color: var(--ink);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.28));
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+  transition: filter 0.15s;
+}
+.deck-load:hover {
+  filter: brightness(1.15);
+}
+.deck-load:disabled {
+  opacity: 0.5;
+  cursor: default;
+  filter: none;
+}
+
+/* ===== Library backpack (v1 ecosystem increment 2) ===== */
+/* Grid lives in the glass; it scrolls inside the fixed aspect (no device resize).
+   Override .crt-screen-slot > div's flex-centering with a higher-specificity rule
+   so the grid fills + scrolls rather than centering. */
+.crt-screen-slot > .lib-screen {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.lib-grid {
+  height: 100%;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+  gap: 8px;
+  padding: 12px;
+  align-content: start;
+}
+.lib-tile {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border: 0;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    box-shadow 0.12s,
+    filter 0.12s;
+}
+.lib-tile:hover {
+  filter: brightness(1.12);
+}
+.lib-tile.is-sel {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 10px var(--led-glow);
+}
+.lib-thumb {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  /* Smooth-downscale the dither into a clean miniature — nearest (pixelated)
+     decimation of a 1-bit dither moirés into "blocky" mush at thumbnail size. */
+  image-rendering: auto;
+}
+/* Video element badge: a small duration tag on the tile corner. */
+.lib-badge {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(4, 8, 5, 0.85);
+  font-family: 'VT323', 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  text-shadow: 0 0 6px var(--led-glow);
+  pointer-events: none;
+}
+/* The Library deck: a status line + the persistent action bar. */
+.lib-deck-info {
+  justify-content: center;
+  align-items: center;
+}
+.lib-deck-status {
+  font: 500 12px system-ui;
+  letter-spacing: 0.02em;
+  color: var(--sub);
+}
+
+/* ===== Record scene (v1 ecosystem increment 3) ===== */
+/* Two stacked layers filling the aspect-shaped glass: the authoritative dither
+   canvas, and the transparent Konva interaction controller on top. Override the
+   screen-slot's flex-centering so they fill exactly. */
+.crt-screen-slot > .scene-surface {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.scene-surface {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  /* The dither is the only output; crisp NEAREST upscale to fill the glass. */
+  image-rendering: pixelated;
+}
+.scene-konva {
+  position: absolute;
+  inset: 0;
+}
+.scene-konva canvas {
+  display: block;
+}
+/* Paint mode (draw-in-Record): the brush bypasses the Konva controller. Let pointer
+   events fall through to the surface div (which routes to the brush) and show the
+   crosshair + brush ring, exactly like the Draw glass. */
+.scene-surface.is-paint {
+  cursor: crosshair;
+  touch-action: none;
+}
+/* A frozen node is selected — the brush is greyed (deck offers Rasterize); the glass
+   shows it's not paintable here. */
+.scene-surface.is-paint.is-frozen {
+  cursor: not-allowed;
+}
+.scene-surface.is-paint .scene-konva {
+  pointer-events: none;
+}
+/* Record Arrange/Paint mode toggle — a compact centred segmented control above the
+   deck controls (the primary Record mode switch). Reuses the .bg-tool segment look. */
+/* Record mode toggle (Arrange / Paint) as a segmented switch. */
+
+/* React segment — the Reactivity panel (P6 v14). Each row is one reaction:
+   [Scene/Elem] [Band] -> [Effect] [depth] [x]. Compact so it holds the 378px
+   deck reserve; the list scrolls if reactions pile up. */
+.react-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.react-cell {
+  padding: 5px 6px;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.react-cell--wide {
+  min-width: 54px;
+}
+.react-arrow {
+  color: var(--sage);
+  font-size: 10px;
+  opacity: 0.65;
+  flex-shrink: 0;
+}
+
+/* Looper transport (Group E, + the fader-board pass) — a vertical LOOP
+   column on the deck's left edge: big Rec/Play, the record-time speed stepper, and
+   the E7 overdub controls (take counter, chips, Undo Take / Clear Loop). Fits the
+   reserved deck height — the device never resizes. */
+.loop-col {
+  min-width: 118px;
+  flex-shrink: 0;
+}
+.loop-col > .deck-load {
+  width: 100%;
+  text-align: center;
+}
+.loop-big {
+  padding: 9px 12px;
+  font-size: 13.5px;
+}
+/* Armed: the Record button glows red so it's unmistakable you're capturing. */
+.loop-speed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.loop-speed .deck-load {
+  width: 26px;
+  padding: 6px 0;
+  text-align: center;
+}
+.loop-speed-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  flex: 1;
+  min-width: 44px;
+  text-align: center;
+  color: var(--ink);
+}
+/* Procedural MOTION (moved into the loop column, deck pass): a label over a
+   row of [cycle | − | +]. The cycle button fills; the amp steppers are fixed-narrow so
+   the long motion names (Parallax/Marquee/Twinkle) get the width in this ~118px column. */
+.loop-motion {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.loop-motion-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+/* Clear Loop armed (awaiting the confirming second click) — warn colour. */
+.deck-load.is-arm {
+  background: linear-gradient(180deg, #e5a23b, rgba(0, 0, 0, 0.3));
+  color: #1a1a1a;
+  filter: none;
+}
+/* FIXED-height tray (2 rows × 16px chips = all 12 takes, no wrap growth): the
+   tray renders even with zero takes so recording a take / clearing the loop can
+   never change the loop column's height — the deck must not resize. */
+.loop-takes {
+  display: flex;
+  align-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  flex-wrap: wrap;
+  height: 36px;
+  overflow: hidden;
+}
+/* P6: Undo/Clear share one row — the AUDIO row above reclaimed their height. */
+.loop-take-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.loop-take-chip {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  font:
+    600 9px 'DM Mono',
+    monospace;
+  color: var(--ink);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.35));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.loop-take-chip:hover {
+  filter: brightness(1.15);
+}
+/* A muted take reads as struck-out / dimmed. */
+.loop-take-chip.is-muted {
+  opacity: 0.4;
+  text-decoration: line-through;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.55));
+}
+
+/* B9 cutout cleanup row: Erase/Restore + brush + undo/redo, shown after Remove BG.
+   A single compact full-width strip (flex-basis: 100%) so its height is small and
+   stable — the reserved deck height (.crt-deck-surface) absorbs it, so the device
+   doesn't resize when a cutout is active or between modes. */
+/* While a cleanup tool is armed, show a checkerboard behind the preview so erased
+   (transparent) cells are legible — otherwise a transparent cell over the near-black
+   glass looks identical to a dark dithered cell, making erase appear to do nothing.
+   Behind the canvas only; the dither + export are untouched. */

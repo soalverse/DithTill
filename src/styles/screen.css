@@ -1,0 +1,2169 @@
+/* Theme tokens: page-wide defaults = Amber; ScreenShell writes the
+   chosen theme's values onto <html> (ui/shell-theme.ts themeVars). */
+:root {
+  --phos-rgb: 255, 222, 176;
+  --glow-rgb: 255, 170, 40;
+  --accent-rgb: 255, 176, 0;
+  --phos: #ffdeb0;
+  --phos-dim: rgba(255, 222, 176, 0.62);
+  --phos-faint: rgba(255, 222, 176, 0.16);
+  --phos-glow: 0 0 6px rgba(255, 170, 40, 0.45);
+  --accent: #ffb000;
+  --accent-deep: #d68800;
+  --accent-ink: #1a1000;
+  --led-glow: rgba(255, 176, 0, 0.85);
+}
+/* =============================================================================
+   SCREEN shell — PROTOTYPE round 2 ("nothing but the screen — everything is ON the actual screen, like the help
+   screen, but on the sides"). The whole window is the black CRT. The artwork is
+   letterboxed at its aspect in the full window, and the controls are ON-GLASS
+   overlay panels at the left/right edges in the ? help aesthetic: dark phosphor
+   panel, VT323, green-white glow. Scoped under .scr — the radio (crt.css) is
+   untouched while the flag is off.
+   ========================================================================== */
+
+.scr {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+  color: var(--phos);
+  font-family: 'VT323', 'DM Mono', monospace;
+  --panel-bg: rgba(4, 8, 5, 0.86);
+}
+
+/* Keyboard focus is visible everywhere on the screen (audit G-20). */
+.scr :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ----- the glass: the full window ----- */
+.scr-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  container-type: size;
+  display: grid;
+  place-items: center;
+}
+.scr .scr-glass {
+  width: min(100cqw, calc(100cqh * var(--ar)));
+  height: min(100cqh, calc(100cqw / var(--ar)));
+  border-radius: 0;
+  background: #000;
+  box-shadow: none;
+}
+
+/* ----- on-glass panels (left = modes + params, right = actions + system) ----- */
+.scr-rail {
+  position: absolute;
+  top: 18px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: calc(100% - 36px);
+  padding: 16px 16px 18px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: 4px;
+  background: var(--panel-bg);
+  color: var(--phos);
+  text-shadow: var(--phos-glow);
+  scrollbar-width: thin;
+  scrollbar-color: var(--phos-faint) transparent;
+  transition: opacity 0.25s ease;
+}
+.scr-rail--l {
+  left: 18px;
+  width: 292px;
+}
+.scr-rail--r {
+  right: 18px;
+  width: 232px;
+  max-height: calc(100% - 36px - 58px); /* clear the power corner */
+}
+.scr.is-ui-hidden .scr-rail {
+  opacity: 0;
+  pointer-events: none;
+}
+/* Auto-fade: a drag on the glass dims the panels; reaching for one brings it back. */
+.scr.is-dragging .scr-rail {
+  opacity: 0.1;
+}
+.scr.is-dragging .scr-rail:hover {
+  opacity: 1;
+}
+/* Hidden panels stay hidden while you paint (the drag dim must not bring them back). */
+.scr.is-ui-hidden.is-dragging .scr-rail,
+.scr.is-ui-hidden.is-dragging .scr-rail:hover {
+  opacity: 0;
+}
+
+/* ----- brand + modes ----- */
+.scr-brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+/* The open project's name — click to rename. */
+.scr-project,
+.scr-project-input {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font:
+    18px/1.1 'VT323',
+    monospace;
+  color: var(--phos-dim);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scr-project {
+  cursor: pointer;
+}
+.scr-project:hover {
+  color: var(--accent);
+}
+.scr-project-dot {
+  color: var(--accent);
+}
+.scr-project-input {
+  flex: 1 1 140px;
+  border-bottom: 1px solid var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+.scr-wordmark {
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-shadow:
+    0 0 2px currentColor,
+    0 0 14px rgba(var(--glow-rgb), 0.5);
+}
+.scr-wordmark b {
+  font-weight: normal;
+  color: var(--accent);
+  text-shadow: 0 0 9px var(--led-glow);
+}
+.scr-modes {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  justify-content: space-between;
+  gap: 6px;
+}
+.scr-mode {
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font:
+    21px/1.1 'VT323',
+    monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--phos-dim) !important; /* the help idiom: one phosphor, accent = selected */
+  transition:
+    color 0.12s,
+    text-shadow 0.12s;
+}
+.scr-mode:hover {
+  color: var(--phos) !important;
+}
+.scr-mode.is-on {
+  color: var(--accent) !important;
+  text-shadow: 0 0 9px var(--led-glow);
+}
+.scr-mode.is-on::before {
+  content: '>';
+  margin-right: 1px;
+}
+
+/* ----- the deck, re-flowed into a column on the glass ----- */
+.scr-deck .deck-cols {
+  flex-direction: column;
+  gap: 16px;
+}
+.scr .deck-vsep {
+  display: none;
+}
+.scr .deck-panel-grow {
+  flex: none;
+}
+.scr .deck-panel,
+.scr .deck-cols .deck-panel {
+  gap: 7px;
+}
+.scr .deck-rail,
+.scr .loop-col {
+  min-width: 0;
+}
+.scr .deck-hsep {
+  height: 1px;
+  margin: 3px 0;
+  background: var(--phos-faint);
+  box-shadow: none;
+}
+.scr-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Every word is phosphor type (VT323 needs ~15px+ to read — audit G-17). */
+.scr-rail :is(span, label, div, p, button, input) {
+  font-family: 'VT323', 'DM Mono', monospace;
+}
+.scr .deck-panel-label {
+  font-size: 17px;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  text-shadow: 0 0 9px var(--led-glow);
+}
+.scr .deck-ctl-label,
+.scr .deck-switch-label,
+.scr .crt-layers-title {
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--phos-dim);
+  opacity: 1;
+}
+.scr .deck-slider-readout {
+  font-size: 18px;
+  font-weight: normal;
+  color: var(--phos);
+}
+
+/* ----- controls as on-screen text ----- */
+.scr .deck-load {
+  min-height: 28px;
+  padding: 2px 10px;
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: none;
+  font:
+    19px/1.1 'VT323',
+    monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--phos);
+  text-shadow: var(--phos-glow);
+  transition:
+    color 0.12s,
+    border-color 0.12s;
+}
+.scr .deck-load:hover:not(:disabled) {
+  filter: none;
+  color: var(--accent);
+  border-color: var(--accent);
+  text-shadow: 0 0 9px var(--led-glow);
+}
+.scr .deck-load:disabled,
+.scr .scr-mode:disabled,
+.scr .deck-seg button:disabled,
+.scr .aspect-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.scr .deck-load.is-on,
+.scr .deck-load.is-arm {
+  color: #000;
+  background: var(--accent);
+  border-color: var(--accent);
+  text-shadow: none;
+  box-shadow: 0 0 12px var(--led-glow);
+}
+/* A lit button stays readable under the pointer (hover would turn its label amber on
+   amber); hover just brightens the glow. */
+.scr .deck-load.is-on:hover:not(:disabled),
+.scr .deck-load.is-arm:hover:not(:disabled) {
+  color: #000;
+  text-shadow: none;
+  box-shadow: 0 0 18px var(--led-glow);
+}
+.scr .deck-load.deck-export {
+  color: #ff9e8a;
+  border-color: rgba(255, 158, 138, 0.45);
+  background: transparent;
+  text-shadow: 0 0 7px rgba(255, 120, 100, 0.55);
+}
+
+.scr .deck-seg {
+  padding: 0;
+  gap: 2px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.scr .deck-seg button {
+  padding: 1px 7px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: none;
+  font:
+    18px/1.1 'VT323',
+    monospace;
+  letter-spacing: 0.04em;
+  color: var(--phos-dim);
+  text-shadow: var(--phos-glow);
+}
+.scr .deck-seg button:hover {
+  color: var(--phos);
+}
+.scr .deck-seg button.is-on {
+  color: #000;
+  background: var(--accent);
+  text-shadow: none;
+  box-shadow: 0 0 10px var(--led-glow);
+}
+
+.scr .deck-dd-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.scr .deck-dd {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.scr .deck-dd-btn {
+  padding: 1px 8px;
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 18px;
+  color: var(--phos);
+}
+.scr .deck-dd-btn.is-open,
+.scr .deck-dd-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: transparent;
+}
+.scr .deck-dd-caret {
+  font-size: 14px;
+}
+
+.scr .deck-range::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 0;
+  background: var(--phos-faint);
+  box-shadow: 0 0 6px rgba(var(--glow-rgb), 0.25);
+}
+.scr .deck-range::-webkit-slider-thumb {
+  width: 8px;
+  height: 18px;
+  margin-top: -8px;
+  border-radius: 1px;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--led-glow);
+}
+
+.scr .rocker {
+  height: 24px;
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: none;
+}
+.scr .rocker.is-on {
+  border-color: var(--accent);
+}
+.scr .rocker-knob {
+  top: 2px;
+  border-radius: 1px;
+  background: var(--phos-dim);
+  box-shadow: none;
+}
+.scr .rocker.is-on .rocker-knob {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--led-glow);
+}
+
+.scr .aspect-btn {
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: none;
+}
+.scr .aspect-btn.is-on {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--led-glow);
+}
+.scr .bg-swatch {
+  width: 24px;
+  height: 24px;
+}
+.scr .deck-switch {
+  align-items: flex-start;
+}
+
+/* ----- Record: the right panel holds LOOP + Scene ----- */
+.scr .loop-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.scr .loop-col > * {
+  grid-column: 1 / -1;
+}
+.scr .loop-col > .loop-big {
+  grid-column: auto;
+}
+.scr-slot:has(.loop-col) .deck-rail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.scr-slot:has(.loop-col) .deck-rail > :is(.deck-panel-label, .deck-hsep, .deck-rail-pair) {
+  grid-column: 1 / -1;
+}
+.scr-layers .crt-layers {
+  height: auto;
+  max-height: 220px;
+  padding: 0;
+}
+.scr-layers .crt-layers-title {
+  text-align: left;
+}
+/* The Layers "+": sits beside the close chevron, opens the Add menu. */
+.crt-layers-add {
+  position: absolute;
+  top: 0;
+  right: 26px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+  background: transparent;
+  font:
+    20px/1 'VT323',
+    monospace;
+  color: var(--accent);
+  cursor: pointer;
+}
+.crt-layers-add:hover,
+.crt-layers-add.is-on {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--led-glow);
+}
+.crt-layers-add:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.scr-layers-open {
+  align-self: flex-start;
+}
+/* One canvas: rows read as names; drag a row to reorder. */
+.scr-layers .crt-layer-row {
+  min-height: 30px;
+  padding: 2px 8px;
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: none;
+  touch-action: none;
+  user-select: none;
+}
+.scr-layers .crt-layer-row.is-sel {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--led-glow);
+}
+.scr-layers .crt-layer-row.is-drag {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+.scr-layers .crt-layer-row.is-drop {
+  box-shadow: 0 -3px 0 var(--accent);
+}
+.scr-layers .crt-layer-name {
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--phos);
+  text-shadow: var(--phos-glow);
+}
+.scr-layers .crt-layer-row.is-sel .crt-layer-name {
+  color: var(--accent);
+}
+.scr-layers .crt-layer-tag {
+  font-size: 15px;
+  background: transparent;
+  color: var(--phos-dim);
+}
+.scr-layers .crt-layer-x {
+  width: 30px;
+}
+/* The selected layer's settings (LayerPanel). */
+.layer-acts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+.layer-acts > .deck-load {
+  padding: 2px 4px;
+}
+/* Which layer the ONE Dot colour row is colouring (it follows the selection). */
+.dot-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: -4px;
+}
+.scr .dot-target .deck-ctl-label {
+  text-transform: none;
+  color: var(--accent);
+}
+
+/* ----- system cluster (foot of the right panel) ----- */
+.scr-sys {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--phos-faint);
+}
+.scr-chip,
+.scr-ghost {
+  min-height: 26px;
+  padding: 1px 8px;
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  font:
+    18px/1.1 'VT323',
+    monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--phos-dim);
+  text-shadow: var(--phos-glow);
+}
+.scr-chip:hover,
+.scr-ghost:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.scr-chip.is-on {
+  color: var(--accent);
+  border-color: var(--accent);
+  text-shadow: 0 0 9px var(--led-glow);
+}
+.scr-moods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.scr-mood {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: currentColor;
+  cursor: pointer;
+  opacity: 0.45;
+  box-shadow: 0 0 8px -1px currentColor;
+}
+.scr-mood.is-on {
+  opacity: 1;
+  outline: 1.5px solid currentColor;
+  outline-offset: 3px;
+}
+
+/* ----- the tube: scanlines + vignette over EVERYTHING (panels included) ----- */
+.scr-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.scr.is-on.is-fx .scr-fx {
+  opacity: 1;
+}
+.scr-scan {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0.22) 1.5px,
+    rgba(0, 0, 0, 0) 3px
+  );
+}
+.scr-vig {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(125% 115% at 50% 48%, transparent 60%, rgba(0, 0, 0, 0.55) 100%);
+  box-shadow: inset 0 0 70px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* ----- power ----- */
+.scr-off {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: auto;
+  background: radial-gradient(circle at 50% 45%, #0a0d0a, #020302);
+  opacity: 1;
+  transition: opacity 0.55s ease;
+}
+.scr.is-on .scr-off {
+  opacity: 0;
+  pointer-events: none;
+}
+.scr-staticline {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  opacity: 0;
+  transform-origin: center;
+  background: linear-gradient(
+    0deg,
+    #050805 44%,
+    rgba(225, 255, 228, 0.95) 49.6%,
+    rgba(225, 255, 228, 0.95) 50.4%,
+    #050805 56%
+  );
+}
+.scr-power {
+  position: absolute;
+  right: 22px;
+  bottom: 20px;
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  background: rgba(4, 8, 5, 0.6);
+  color: var(--accent);
+  cursor: pointer;
+  box-shadow:
+    0 0 14px -2px var(--accent),
+    inset 0 0 10px -4px var(--accent);
+  transition: opacity 0.25s;
+}
+.scr-power-glyph {
+  position: absolute;
+  inset: 11px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+.scr-power-glyph::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  width: 2px;
+  height: 10px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.scr:not(.is-on) .scr-power {
+  animation: scr-breathe 2.4s ease-in-out infinite;
+}
+.scr.is-on.is-ui-hidden .scr-power {
+  opacity: 0;
+  pointer-events: none;
+}
+@keyframes scr-breathe {
+  50% {
+    box-shadow:
+      0 0 22px 2px var(--accent),
+      inset 0 0 12px -2px var(--accent);
+  }
+}
+
+/* The ghost "Show UI" — only exists while the UI is hidden; faint until reached. */
+.scr-ghost {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 7;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.scr.is-ui-hidden .scr-ghost {
+  opacity: 0.3;
+  pointer-events: auto;
+}
+.scr.is-ui-hidden .scr-ghost:hover,
+.scr.is-ui-hidden .scr-ghost:focus-visible {
+  opacity: 1;
+}
+
+/* OS reduced motion (audit G-21): no fades, no breathing, no power flash. */
+@media (prefers-reduced-motion: reduce) {
+  .scr,
+  .scr * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Record's right panel (LOOP + Scene + system) must fit a 720px-tall window. */
+.scr .deck-load {
+  min-height: 26px;
+}
+.scr-slot {
+  gap: 12px;
+}
+.scr-rail {
+  gap: 10px;
+  padding: 14px 16px;
+}
+.scr-sys {
+  padding-top: 8px;
+}
+
+/* Legibility floor for the remaining radio-era micro type (audit G-17). */
+.scr-rail :is(.crt-layers-empty, .lib-deck-status) {
+  font-size: 17px;
+  letter-spacing: 0.04em;
+}
+.scr-rail :is(.crt-layer-btn, .crt-layers-close, .bg-swatch-custom) {
+  font-size: 16px;
+}
+
+/* Library on the full-window glass: keep the tiles clear of the two on-glass panels
+   (the glass is centred, so only the part of a panel that overlaps it needs padding). */
+.scr .lib-grid {
+  padding-left: max(12px, calc(328px - (100cqw - min(100cqw, 100cqh * var(--ar))) / 2));
+  padding-right: max(12px, calc(268px - (100cqw - min(100cqw, 100cqh * var(--ar))) / 2));
+}
+.layer-acts--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* ===== ANIMATE timeline strip: a Movie-Maker-style strip along the
+   bottom. The stage + panels shrink above it so nothing hides behind it. ===== */
+.scr {
+  --strip-h: 248px;
+}
+.scr.has-strip .scr-stage {
+  bottom: var(--strip-h);
+}
+.scr.has-strip .scr-rail {
+  max-height: calc(100% - 36px - var(--strip-h));
+}
+.scr.has-strip .scr-rail--r {
+  max-height: calc(100% - 36px - var(--strip-h));
+}
+.scr.has-strip .scr-power {
+  bottom: calc(var(--strip-h) + 14px);
+}
+.scr-strip {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 12px;
+  z-index: 4;
+  height: calc(var(--strip-h) - 22px);
+  padding: 10px 14px 12px;
+  border-radius: 4px;
+  background: var(--panel-bg);
+  color: var(--phos);
+  text-shadow: var(--phos-glow);
+  transition: opacity 0.25s ease;
+}
+.scr.is-ui-hidden .scr-strip {
+  opacity: 0;
+  pointer-events: none;
+}
+.tl {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 6px;
+  font-family: 'VT323', 'DM Mono', monospace;
+}
+.tl-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.tl-bar .deck-load {
+  min-height: 26px;
+  padding: 1px 9px;
+}
+.tl-bar .tl-step {
+  padding: 1px 7px;
+}
+.scr .deck-load.tl-rec {
+  color: #ff8a7a;
+  border-color: rgba(255, 138, 122, 0.5);
+}
+.scr .deck-load.tl-rec.is-arm {
+  color: #000;
+  background: #ff6a55;
+  border-color: #ff6a55;
+}
+.tl-time {
+  min-width: 112px;
+  font-size: 19px;
+  color: var(--accent);
+}
+.tl-lbl {
+  font-size: 16px;
+  text-transform: uppercase;
+  color: var(--phos-dim);
+}
+.tl-val {
+  min-width: 42px;
+  text-align: center;
+  font-size: 18px;
+}
+/* The tempo field (J1): a small phosphor number, no spinner arrows. */
+.tl-bpm {
+  width: 52px;
+  padding: 1px 4px;
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.55);
+  font:
+    18px/1.1 'VT323',
+    monospace;
+  text-align: center;
+  color: var(--phos);
+  outline: none;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.tl-bpm::-webkit-outer-spin-button,
+.tl-bpm::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+.tl-bpm:focus {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.tl-bpm:disabled {
+  opacity: 0.5;
+}
+.tl-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--phos-faint);
+}
+.tl-close {
+  margin-left: auto;
+}
+.tl-grid {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  column-gap: 8px;
+}
+.tl-ruler {
+  position: relative;
+  height: 18px;
+  cursor: ew-resize;
+  border-bottom: 1px solid var(--phos-faint);
+}
+.tl-tick {
+  position: absolute;
+  top: 0;
+  font-size: 14px;
+  color: var(--phos-dim);
+  transform: translateX(-2px);
+}
+.tl-rows {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--phos-faint) transparent;
+}
+.tl-heads,
+.tl-lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 4px;
+}
+.tl-lanes {
+  position: relative;
+  cursor: ew-resize;
+}
+.tl-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+.tl-name.is-sel {
+  border-color: var(--accent);
+}
+.tl-name.is-drag {
+  opacity: 0.45;
+}
+.tl-name.is-drop {
+  box-shadow: 0 -3px 0 var(--accent);
+}
+.tl-name-txt {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 17px;
+  text-transform: uppercase;
+}
+.tl-name.is-sel .tl-name-txt {
+  color: var(--accent);
+}
+.tl-spk {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--phos);
+  font-size: 11px;
+  cursor: pointer;
+}
+.tl-spk.is-muted {
+  opacity: 0.45;
+}
+.tl-meter {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 1px;
+  height: 2px;
+  background: var(--accent);
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+.tl-lane {
+  position: relative;
+  height: 28px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.tl-lane.is-sel {
+  background: rgba(var(--accent-rgb), 0.07);
+}
+/* J2b drawn lanes: a thin row per drawn setting under its layer (heads + lanes match). */
+.tl-name--auto,
+.tl-lane--auto {
+  height: 34px;
+}
+.tl-name--auto {
+  padding-left: 22px;
+  border-style: dashed;
+}
+.tl-name--auto .tl-name-txt {
+  font-size: 15px;
+  color: var(--phos-dim);
+}
+.tl-name--auto:hover .tl-name-txt {
+  color: var(--accent);
+}
+.tl-name--canvas {
+  cursor: default;
+}
+.tl-fold {
+  flex: 0 0 auto;
+  width: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 16px;
+  color: var(--phos-dim);
+  cursor: pointer;
+}
+.tl-fold:hover {
+  color: var(--accent);
+}
+.tl-lane--auto {
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+.tl-auto-line {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.tl-auto-fill {
+  fill: rgba(var(--accent-rgb), 0.12);
+}
+.tl-auto-stroke {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.tl-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 5px var(--led-glow);
+  cursor: grab;
+}
+.tl-dot:hover,
+.tl-dot.is-on {
+  transform: scale(1.4);
+}
+.tl-dot.is-on {
+  cursor: grabbing;
+}
+.tl-dot-tip {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, calc(-100% - 8px));
+  padding: 0 4px;
+  border: 1px solid var(--accent);
+  background: #000;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--accent);
+  pointer-events: none;
+}
+.tl-clip {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.tl-clip--video {
+  border: 1px solid var(--accent);
+  background: rgba(var(--accent-rgb), 0.16);
+}
+.tl-clip--motion {
+  border: 1px dashed var(--phos-dim);
+}
+.tl-clip--still {
+  border: 1px solid var(--phos-faint);
+  background: rgba(var(--phos-rgb), 0.05);
+}
+.lib-badge--rec {
+  color: #ff7a55;
+}
+/* A recording: its bar, strokes and name box in the Rec red. */
+.tl-clip--rec {
+  border: 1px solid var(--rec, #e05a3a);
+  background: rgba(224, 90, 58, 0.16);
+}
+.tl-name.is-rec {
+  border-color: var(--rec, #e05a3a);
+}
+.tl-name.is-rec .tl-name-txt,
+.tl-name.is-rec.is-sel .tl-name-txt,
+.scr-layers .crt-layer-row.is-rec .crt-layer-name,
+.scr-layers .crt-layer-row.is-rec.is-sel .crt-layer-name {
+  color: #ff7a55;
+  text-shadow: 0 0 6px rgba(255, 90, 58, 0.5);
+}
+.tl-take-mark.is-rec {
+  background: #ff7a55;
+}
+/* The stretch of its bar where it holds its finished picture. */
+.tl-held {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(224, 90, 58, 0.14) 0 5px,
+    rgba(224, 90, 58, 0.42) 5px 10px
+  );
+  pointer-events: none;
+}
+/* Where its drawing ends: Repeat or Hold. */
+.tl-seam-chip {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  padding: 0 5px;
+  border: 0;
+  border-radius: 3px;
+  background: #e05a3a;
+  color: #050403;
+  font: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tl-seam-chip:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.layer-menu-sub {
+  padding-left: 22px;
+}
+.tl-clip-txt {
+  padding: 0 12px;
+  font-size: 15px;
+  white-space: nowrap;
+  color: var(--phos);
+}
+.tl-trim {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background: var(--accent);
+  cursor: ew-resize;
+  touch-action: none;
+}
+.tl-trim--a {
+  left: 0;
+}
+.tl-trim--b {
+  right: 0;
+}
+/* A layer's takes + loop repeats drawn INSIDE its bar: a thin strip per take per
+   pass along the bar's foot, a faint tick where the loop starts again. Muting lives in the
+   bar's right-click menu. */
+.tl-take-mark {
+  position: absolute;
+  bottom: 5px;
+  height: 4px;
+  border-radius: 1px;
+  background: rgba(255, 138, 122, 0.85);
+  pointer-events: none;
+}
+.tl-take-mark.is-muted {
+  background: transparent;
+  outline: 1px dashed rgba(255, 138, 122, 0.6);
+}
+.tl-rep {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: rgba(var(--phos-rgb), 0.35);
+  pointer-events: none;
+}
+.tl-wave {
+  position: absolute;
+  inset: 4px 2px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.tl-wave i {
+  flex: 1;
+  background: var(--phos-dim);
+  border-radius: 1px;
+}
+.tl-head-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: #ff6a55;
+  box-shadow: 0 0 8px rgba(255, 106, 85, 0.7);
+  pointer-events: none;
+}
+.tl-head-line.is-rest {
+  opacity: 0.35;
+}
+/* The playhead's handle on the ruler: drag it to move the playhead. */
+.tl-grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 6px;
+  z-index: 3;
+  width: 14px;
+  margin-left: -7px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.tl-grip::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  border-top: 10px solid #ff6a55;
+  border-right: 6px solid transparent;
+  border-left: 6px solid transparent;
+  filter: drop-shadow(0 0 3px rgba(255, 106, 85, 0.8));
+}
+.tl-grip.is-rest::before {
+  opacity: 0.6;
+}
+.tl-grip.is-off {
+  cursor: default;
+}
+/* The marked part: a band on the ruler (✕ clears it) + a faint band down the rows;
+   the video's end mark and the room after it (no song: drag a bar out there to lengthen). */
+.tl-part {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: rgba(var(--accent-rgb), 0.22);
+  pointer-events: none;
+}
+.tl-part-x {
+  position: absolute;
+  top: -1px;
+  right: 1px;
+  padding: 0 3px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font:
+    14px/1 'VT323',
+    monospace;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.tl-part-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed var(--accent);
+  border-right: 1px dashed var(--accent);
+  background: rgba(var(--accent-rgb), 0.06);
+  pointer-events: none;
+}
+.tl-end-mark {
+  position: absolute;
+  top: 0;
+  padding-left: 3px;
+  border-left: 1px solid var(--phos-dim);
+  font-size: 14px;
+  color: var(--phos-dim);
+  pointer-events: none;
+}
+/* The loop bracket on the ruler: the picked layer's loop, a tick at
+   every repeat. */
+.tl-loop {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid var(--accent);
+  border-right: 2px solid var(--accent);
+  background: rgba(var(--accent-rgb), 0.25);
+  pointer-events: none;
+}
+.tl-loop-txt {
+  position: absolute;
+  top: -1px;
+  left: 3px;
+  font-size: 14px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--accent);
+  text-shadow: 0 0 4px #000;
+}
+.tl-loop-tick {
+  position: absolute;
+  top: 2px;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.tl-after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  border-left: 1px solid var(--phos-dim);
+  background: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+/* Right-click layer menu + hidden layers. */
+.layer-menu {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: 6px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: rgba(8, 10, 8, 0.96);
+  box-shadow: 0 0 14px var(--led-glow);
+  font-family: 'VT323', 'DM Mono', monospace;
+}
+.layer-menu-title {
+  padding: 2px 8px 4px;
+  font-size: 15px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.layer-menu button {
+  padding: 3px 8px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font:
+    19px/1.1 'VT323',
+    monospace;
+  color: var(--phos);
+  cursor: pointer;
+}
+.layer-menu button:hover {
+  background: rgba(var(--accent-rgb), 0.16);
+  color: var(--accent);
+}
+.export-menu-sep {
+  width: 100%;
+  margin: 2px 0;
+  border: 0;
+  border-top: 1px solid var(--phos-faint);
+}
+/* The Project ▾ menu: FIXED under the button (ExportMenu sets top/right),
+   so the scrolling rail can't clip it; wider than the rail so the hints fit, with group
+   headings + a dim hint line under each item. */
+.scr .export-menu-pop {
+  position: fixed;
+  bottom: auto;
+  left: auto;
+  width: 300px;
+  overflow-y: auto;
+  gap: 4px;
+}
+.export-menu-head {
+  padding: 2px 2px 0;
+  font:
+    15px/1 'VT323',
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.export-menu-pop .deck-load.has-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.export-menu-hint {
+  font:
+    15px/1.05 'VT323',
+    monospace;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--phos-dim);
+  text-shadow: none;
+}
+.layer-menu .layer-menu-danger {
+  color: #ff8a7a;
+}
+.tl-name.is-hidden,
+.crt-layer-row.is-hidden {
+  opacity: 0.4;
+}
+.tl-name.is-hidden .tl-name-txt::after,
+.crt-layer-row.is-hidden .crt-layer-name::after {
+  content: ' · hidden';
+  text-transform: none;
+}
+/* 3b clips: grab to move, edges to trim, the selected clip glows. */
+.tl-clip {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.tl-clip:active {
+  cursor: grabbing;
+}
+.tl-clip.is-sel {
+  border-color: #fff3d6;
+  box-shadow: 0 0 10px var(--led-glow);
+}
+.tl-clip--still .tl-trim {
+  background: var(--phos-dim);
+}
+/* 3c: fades (wedges + draggable top dots), speed label, speed row in the clip menu. */
+.tl-fade-wedge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+.tl-fade-wedge--a {
+  left: 0;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.7), transparent);
+}
+.tl-fade-wedge--b {
+  right: 0;
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.7), transparent);
+}
+.tl-fade {
+  position: absolute;
+  top: 1px;
+  width: 7px;
+  height: 7px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: #fff3d6;
+  cursor: ew-resize;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity 0.12s;
+}
+.tl-fade--b {
+  margin-left: 0;
+  margin-right: -3px;
+}
+.tl-clip:hover .tl-fade,
+.tl-clip.is-sel .tl-fade {
+  opacity: 1;
+}
+.tl-speed {
+  font-weight: normal;
+  color: var(--accent);
+}
+.layer-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px 2px 8px;
+  font-size: 17px;
+  color: var(--phos-dim);
+}
+.layer-menu-row button {
+  padding: 1px 4px;
+  font-size: 17px;
+}
+/* Visualizer gallery + style tiles. Live tiles animate to the song. */
+.viz-tiles {
+  display: grid;
+  grid-template-columns: repeat(var(--viz-cols, 3), var(--viz-tile));
+  gap: 6px;
+  justify-content: center;
+}
+.viz-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--phos-faint, rgba(var(--phos-rgb), 0.25));
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  font:
+    15px/1 'VT323',
+    monospace;
+  text-transform: uppercase;
+  color: var(--phos-dim, #b8c2ae);
+}
+.viz-tile canvas {
+  width: calc(var(--viz-tile) - 8px);
+  height: calc(var(--viz-tile) - 8px);
+  image-rendering: pixelated;
+  border-radius: 2px;
+}
+.viz-tile:hover,
+.viz-tile.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 8px var(--led-glow);
+}
+.viz-pop {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: rgba(8, 10, 8, 0.96);
+  box-shadow: 0 0 14px var(--led-glow);
+  font-family: 'VT323', 'DM Mono', monospace;
+}
+.viz-pop-title {
+  font-size: 18px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.viz-pop-hint {
+  max-width: 300px;
+  font-size: 16px;
+  color: var(--phos-dim, #b8c2ae);
+}
+/* The selected visualizer's current style: one moving tile + Change style. */
+.viz-current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.viz-current-side {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+.viz-current-name {
+  font:
+    19px/1 'VT323',
+    monospace;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.viz-tiles--one .viz-tile span {
+  display: none;
+}
+.viz-tiles--one {
+  grid-template-columns: var(--viz-tile);
+}
+.viz-current-side .deck-load {
+  padding-inline: 4px;
+  white-space: nowrap;
+}
+.viz-why {
+  cursor: help;
+}
+/* A reaction: its row, then its How much slider. */
+.react-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.react-block .deck-dd {
+  flex: 1;
+}
+.react-block .react-row > .deck-load {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+}
+.react-block .react-row > .react-cell--wide {
+  min-width: 58px;
+}
+.tl-video b {
+  font-weight: normal;
+  color: var(--accent);
+}
+/* Timeline zoom: right-justified magnifiers; ruler + lanes scroll. */
+.tl-zoom {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.tl-zoom ~ .tl-close {
+  margin-left: 0;
+}
+.tl-zoom .deck-load {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tl-hwin {
+  min-width: 0;
+  overflow: hidden;
+}
+.tl-hwin--scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--phos-faint) transparent;
+}
+/* The timeline ends short of the right edge (TL_END_INSET) so the last label fits. */
+.tl-hpad {
+  box-sizing: border-box;
+  padding-right: 40px;
+}
+/* The one settings menu: ⚙ opens Hide UI · Help · FX · Theme. */
+.scr-sys {
+  position: relative;
+  align-items: flex-start;
+}
+.scr-gear {
+  font-size: 20px;
+  line-height: 1;
+}
+.scr-sys-pop {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 230px;
+  padding: 10px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: rgba(8, 10, 8, 0.96);
+  box-shadow: 0 0 14px var(--led-glow);
+}
+.scr-sys-label {
+  width: 100%;
+  margin-top: 4px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--phos-dim);
+}
+/* Background = one swatch; its choices pop up beside it. */
+.bg-swatch-current {
+  width: 26px;
+  height: 22px;
+}
+.bg-pick-pop {
+  position: fixed;
+  z-index: 40;
+  transform: translateY(-100%);
+  padding: 8px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: rgba(8, 10, 8, 0.96);
+  box-shadow: 0 0 14px var(--led-glow);
+}
+/* "Match my canvas" theme swatch: the palette's shades round the dot. */
+.scr-mood--canvas {
+  opacity: 0.7;
+}
+/* The empty Layers list holds a row's height, so the first layer causes no jump (owner). */
+.scr-layers .crt-layers-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 30px;
+  margin: 0;
+}
+
+/* ===== Library: the Projects shelf + section headings ===== */
+.lib-section {
+  grid-column: 1 / -1;
+}
+.lib-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+  font:
+    16px/1 'VT323',
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--phos-dim);
+}
+.lib-hint {
+  font:
+    17px/1.2 'VT323',
+    monospace;
+  color: var(--phos-dim);
+}
+.lib-projects {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 10px;
+  margin: 8px 0 14px;
+}
+.lib-project {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--phos-faint);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.lib-project.is-open {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--led-glow);
+}
+.lib-project-open {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.lib-project-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  background: #000;
+  image-rendering: auto;
+}
+.lib-project-blank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font:
+    16px 'VT323',
+    monospace;
+  color: var(--phos-faint);
+}
+.lib-project-name,
+.lib-project-input {
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font:
+    18px/1.1 'VT323',
+    monospace;
+  color: var(--phos);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lib-project-input {
+  border-bottom: 1px solid var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+.lib-project-meta {
+  font:
+    14px/1 'VT323',
+    monospace;
+  color: var(--phos-dim);
+}
+.lib-project-more {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  font:
+    20px/1 'VT323',
+    monospace;
+  color: var(--phos-dim);
+  cursor: pointer;
+}
+.lib-project-more:hover {
+  color: var(--accent);
+}
+/* The ⓘ storage note: hover, focus or tap to read. */
+.lib-info {
+  position: relative;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.lib-info-btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font:
+    18px/1 'VT323',
+    monospace;
+  color: var(--accent);
+  cursor: help;
+}
+.lib-info-pop {
+  display: none;
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: -8px;
+  width: 250px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: rgba(8, 10, 8, 0.96);
+  box-shadow: 0 0 14px var(--led-glow);
+  font:
+    17px/1.25 'VT323',
+    monospace;
+  color: var(--phos);
+  pointer-events: none;
+}
+/* Hover the ⓘ itself (or tap it); the note never blocks the cards beneath it. */
+.lib-info-btn:hover + .lib-info-pop,
+.lib-info-btn:focus-visible + .lib-info-pop,
+.lib-info-pop.is-open {
+  display: block;
+}
+.lib-info-used {
+  display: block;
+  margin-top: 6px;
+  color: var(--accent);
+}
+
+/* A text layer's type-in box: phosphor text on the black glass, lit when focused. */
+.text-layer-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 6px;
+  resize: vertical;
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.55);
+  font:
+    19px/1.1 'VT323',
+    monospace;
+  color: var(--phos);
+  outline: none;
+}
+.text-layer-input:focus {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 8px var(--led-glow);
+}
+.text-layer-input::placeholder {
+  color: var(--phos-dim);
+}
+/* Moves (J2): a movable slider's ∿ button + its live glowing marker (the handle
+   stays where it was set), and the ONE Animate list — every move a row: name · Beat/Sound ·
+   summary · ✕, one open at a time. */
+.deck-slider--after {
+  grid-template-columns: 60px 1fr 46px 18px;
+  gap: 6px;
+}
+.deck-range-wrap {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+.deck-mod-marker {
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow:
+    0 0 6px var(--led-glow),
+    0 0 12px var(--led-glow);
+  pointer-events: none;
+}
+.deck-mod-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+  background: transparent;
+  font:
+    15px/1 'VT323',
+    monospace;
+  color: var(--phos-dim);
+  cursor: pointer;
+}
+.deck-mod-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.deck-mod-btn.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  text-shadow: 0 0 6px var(--led-glow);
+  box-shadow: 0 0 6px var(--led-glow);
+}
+.move-mark {
+  color: var(--accent);
+  text-shadow: 0 0 6px var(--led-glow);
+}
+.moves {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.move {
+  border: 1px solid var(--phos-faint);
+  border-radius: 2px;
+}
+.move.is-open {
+  border-color: var(--accent);
+}
+.move-head {
+  display: flex;
+  align-items: stretch;
+}
+.move-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap; /* the summary takes its own line, never cut off */
+  align-items: baseline;
+  gap: 1px 6px;
+  padding: 3px 6px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font:
+    16px/1.1 'VT323',
+    monospace;
+  color: var(--phos);
+  cursor: pointer;
+}
+.move-title:hover .move-name {
+  color: var(--accent);
+}
+.move-name {
+  white-space: nowrap;
+}
+.move-drive {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  border: 1px solid var(--phos-faint);
+  font-size: 13px;
+  text-transform: uppercase;
+  color: var(--phos-dim);
+}
+.move-drive--sound {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.move-sum {
+  flex-basis: 100%;
+  font-size: 14px;
+  color: var(--phos-dim);
+}
+.move-x {
+  flex: 0 0 auto;
+  width: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--phos-dim);
+  cursor: pointer;
+}
+.move-x:hover {
+  color: #ff8a7a;
+}
+.move-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 6px 6px;
+}
+.move-drive-seg button {
+  flex: 1;
+}
+.move-level {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  align-items: end;
+  gap: 10px;
+}
+.move-level-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 18px;
+}
+.move-level-bars i {
+  flex: 1;
+  background: var(--accent);
+  box-shadow: 0 0 4px var(--led-glow);
+}
+.add-move {
+  gap: 2px;
+}
+/* The Animate list's EFFECTS part (J5). */
+.moves .moves-sub {
+  margin: 6px 0 1px;
+}
+.fx-add button {
+  padding: 1px 6px;
+  border: 1px solid var(--phos-faint);
+  background: transparent;
+  font:
+    16px/1.1 'VT323',
+    monospace;
+  color: var(--phos);
+  cursor: pointer;
+}
+.fx-add button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.add-move-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+.layer-menu .add-move-chips button {
+  padding: 1px 6px;
+  border: 1px solid var(--phos-faint);
+  font-size: 16px;
+}
+.layer-menu .add-move-chips button.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Timeline bar drop-downs: Tempo ▾ (Tap · Detect) and Recording ▾
+   (Slow-mo · Metronome · Takes). Fixed + opening upward, above the strip. */
+.scr .export-menu-pop.tl-pop {
+  position: fixed;
+  top: auto;
+  right: auto;
+  width: auto;
+  z-index: 60;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: rgba(8, 10, 8, 0.96);
+  box-shadow: 0 0 14px var(--led-glow);
+}
+.tl-pop .tl-pop-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tl-pop .deck-load {
+  width: auto;
+  min-height: 26px;
+  padding: 1px 9px;
+}
+
+/* Frame-dots lanes read as numbers: the range at the lane's head, each
+   dot's value beside it. */
+.tl-name--auto {
+  position: relative;
+}
+.tl-lane-range {
+  position: absolute;
+  top: 1px;
+  right: 6px;
+  bottom: 1px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--phos-dim);
+  pointer-events: none;
+}
+.tl-dot-val {
+  position: absolute;
+  transform: translate(7px, -50%);
+  font-size: 13px;
+  line-height: 1;
+  color: var(--accent);
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 0 3px #000;
+}
+
+/* Power beside ⚙: in the rail's bottom row instead of floating over the
+   Project menu; while off, a fixed copy sits in the same spot above the dark cover. */
+.scr-sys-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.scr .scr-power.scr-power--rail {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+.scr .scr-power--rail .scr-power-glyph {
+  inset: 8px;
+}
+.scr .scr-power.scr-power--off {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+  width: 32px;
+  height: 32px;
+  z-index: 10;
+}
+.scr .scr-power--off .scr-power-glyph {
+  inset: 8px;
+}
+
+/* The Animate list's title + its Timeline ▴ button (it replaced the
+   full-width Animate ▸ button under Layers). */
+.scr .anim-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.scr .anim-head .anim-tl {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 2px 10px;
+}
+
+/* + Add move: a short line under each kind's title (Move it / Change it). */
+.layer-menu-hint {
+  padding: 0 8px 4px;
+  margin-top: -4px;
+  font-size: 15px;
+  color: var(--phos-dim);
+}
+/* Every move's When switch (Beat · Sound · Frame dots); the ones it can't do are greyed. */
+.move-when {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.move-drive-seg button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* A layer's animation window: what it is + Remove. */
+.layer-window-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.layer-window-row > .deck-load {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 2px 10px;
+}

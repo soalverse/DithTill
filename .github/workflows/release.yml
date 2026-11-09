@@ -1,0 +1,74 @@
+name: Release
+
+# A version tag builds the installers and attaches them to a DRAFT release, carrying that
+# version's CHANGELOG notes. Nothing is public until a person reads the draft and publishes it.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  draft:
+    name: draft release
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.create.outputs.id }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: '.nvmrc'
+      # Fails if the tag and package.json disagree, or the CHANGELOG has no section for it.
+      - run: node scripts/release-notes.mjs "$GITHUB_REF_NAME" > notes.md
+      - id: create
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
+            --title "DithTill $GITHUB_REF_NAME" --notes-file notes.md
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
+            --jq "map(select(.tag_name == \"$GITHUB_REF_NAME\"))[0].id")
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  installers:
+    name: installers (${{ matrix.name }})
+    needs: draft
+    strategy:
+      # One platform failing must not cost the others their installers.
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Windows, os: windows-latest }
+          - { name: Linux, os: ubuntu-22.04 }
+          - { name: macOS Apple Silicon, os: macos-latest }
+          - { name: macOS Intel, os: macos-15-intel }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      # The model is about 170 MB: fetch it once, not once per platform per release.
+      - uses: actions/cache@v4
+        with:
+          path: public/models
+          key: bg-model-${{ hashFiles('scripts/fetch-bg-model.mjs') }}
+      - run: npm ci
+      # beforeBuildCommand checks for the bundled assets and fetches whatever is missing.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: ${{ needs.draft.outputs.id }}

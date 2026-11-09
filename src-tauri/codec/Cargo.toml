@@ -1,0 +1,44 @@
+[package]
+name = "dithtill-codec"
+version = "0.1.0"
+description = "This guy packs DithTill's frames into MP4s and GIFs and unpacks whatever video or song you hand him. He is written in Rust, he runs on the desktop and on the web, and he has not taken a day off."
+license = "Apache-2.0"
+edition = "2024"
+rust-version = "1.95"
+publish = false
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+# FilmCraft (MIT OR Apache-2.0), pinned to one audited revision. Decoders/encoder run
+# single-threaded in wasm (no `threads` feature there); native turns threads on below.
+[dependencies]
+filmcraft-h264enc = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5", default-features = false }
+filmcraft-h264 = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5", default-features = false }
+filmcraft-hevc = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5", default-features = false }
+filmcraft-vp8 = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5" }
+filmcraft-vp9 = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5", default-features = false }
+filmcraft-av1 = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5", default-features = false }
+filmcraft-aac = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5" }
+filmcraft-opus = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5" }
+filmcraft-ogg = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5" }
+filmcraft-isobmff = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5" }
+filmcraft-matroska = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5" }
+# Audio formats FilmCraft decodes only through MPL-licensed symphonia — permissive ones here.
+nanomp3 = "0.2" # MIT OR Apache-2.0 (bit-exact port of the CC0 minimp3)
+claxon = "0.4" # Apache-2.0 (FLAC)
+lewton = { version = "0.10", default-features = false } # MIT OR Apache-2.0 (Vorbis)
+gif = { version = "0.13", default-features = false, features = ["std"] } # MIT OR Apache-2.0
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+filmcraft-h264enc = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5", features = ["threads"] }
+filmcraft-h264 = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5", features = ["threads"] }
+filmcraft-hevc = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5", features = ["threads"] }
+filmcraft-vp9 = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5", features = ["threads"] }
+filmcraft-av1 = { git = "https://github.com/storytold/filmcraft", rev = "09aaf9bf15d510eda1c413c0ccabb1d7e08b41c5", features = ["threads"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

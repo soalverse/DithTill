@@ -1,0 +1,17 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the recipes > golden: every recipe on a fixed ramp (changing one re-triggers this) 1`] = `
+{
+  "atkinson.N2": "ab1b204e454d9081",
+  "atkinson.N6": "9f4187696c4d650f",
+  "floyd.N2": "160526896469dfb6",
+  "floyd.N2.j1": "5d524501674d4404",
+  "floyd.N6": "d137da519f530076",
+  "jarvis.N2": "fd8793e6c3f0ec49",
+  "jarvis.N6": "2c4b673cdecbecb3",
+  "sierra.N2": "7ac456d10e7740bf",
+  "sierra.N6": "fe32a86432a89fdd",
+  "stucki.N2": "425a9295dadefb74",
+  "stucki.N6": "c6f27f97d365b34b",
+}
+`;

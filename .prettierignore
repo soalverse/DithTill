@@ -1,0 +1,12 @@
+dist
+coverage
+node_modules
+src-tauri/target
+src-tauri/gen
+src-tauri/binaries
+examples
+package-lock.json
+tests/__snapshots__
+*.glsl
+original
+THIRD-PARTY-NOTICES.md

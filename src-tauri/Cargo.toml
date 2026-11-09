@@ -1,0 +1,47 @@
+[package]
+name = "dithtill"
+version = "0.1.0"
+description = "Turn your photos, videos, drawings and songs into 1-bit dithered and halftone art that moves to the music, free and open source, so go build something strange."
+authors = ["Soalverse"]
+license = "Apache-2.0"
+publish = false                       # Open source, but not a crates.io package
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "dithtill_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.3", features = [] }
+tauri-plugin-log = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+dithtill-codec = { path = "codec" }
+
+[dev-dependencies]
+# The mock runtime drives the codec commands over real IPC in unit tests (src/codec.rs).
+tauri = { version = "2.11.3", features = ["test"] }
+
+# The app crate is Tauri glue + the codec commands (src/codec.rs),
+# but it EMBEDS the whole frontend dist (incl. a ~27MB wasm) at compile time —
+# at the default opt-level 3 × 16 parallel codegen units, rustc's LLVM ran out
+# of memory on a 16GB machine (deterministic "rustc-LLVM ERROR: out of memory",
+# 2026-07-02). Serial codegen + moderate opt keeps the peak far lower for the APP
+# crate (nothing hot runs in it); every dependency — the codec and FilmCraft, where
+# export time is spent — still builds at full optimisation.
+[profile.release]
+opt-level = 2
+codegen-units = 1
+
+[profile.release.package."*"]
+opt-level = 3

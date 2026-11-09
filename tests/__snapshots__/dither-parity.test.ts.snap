@@ -1,0 +1,23 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`real reference image — tests/fixtures/Final.png > CPU export == GPU(int) preview on the actual burn target (zero diffs) + stable snapshot 1`] = `
+{
+  "LH": 102,
+  "LW": 102,
+  "hist": [
+    7232,
+    373,
+    35,
+    8,
+    20,
+    2736,
+  ],
+}
+`;
+
+exports[`the matrix registry (Group G screens are structurally sound) > the blue-noise build is deterministic across runs (locked like a literal) 1`] = `
+{
+  "fnv": 1954743399,
+  "side": 16,
+}
+`;

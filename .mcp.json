@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dithtill-halftone": {
+      "command": "node",
+      "args": ["scripts/mcp/halftone-server-launcher.mjs"]
+    }
+  }
+}

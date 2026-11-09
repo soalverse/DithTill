@@ -1,0 +1,30 @@
+node_modules/
+out/
+dist/
+coverage/
+*.log
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+
+# Local env / editor
+.env
+.env.*
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Rust / Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/
+src-tauri/codec/target/
+
+# The retired ffmpeg sidecar - kept ignored so an old local copy is never committed
+src-tauri/binaries/ffmpeg-*
+src-tauri/binaries/FFMPEG-LICENSE.txt
+
+# Vendored background-removal model + ONNX-runtime wasm (~190 MB) - reproduce with scripts/fetch-bg-model.mjs
+public/models/
+public/ort/
+
