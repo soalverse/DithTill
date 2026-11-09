@@ -26,10 +26,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
-            --title "DithTill $GITHUB_REF_NAME" --notes-file notes.md
-          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
-            --jq "map(select(.tag_name == \"$GITHUB_REF_NAME\"))[0].id")
+          # The ID from the create call itself: a lookup can miss a brand-new draft.
+          id=$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" \
+            -f tag_name="$GITHUB_REF_NAME" -f name="DithTill $GITHUB_REF_NAME" \
+            -F draft=true -F body=@notes.md --jq .id)
+          test -n "$id"
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
   installers:
